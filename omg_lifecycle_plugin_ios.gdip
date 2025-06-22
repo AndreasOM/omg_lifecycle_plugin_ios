@@ -1,6 +1,6 @@
 [config]
-name="PluginExample"
-binary="plugin.a"
+name="OMG Lifecycle Plugin iOS"
+binary="plugin.xcframework"
 
 initialization="godot_plugin_init"
 deinitialization="godot_plugin_deinit"
@@ -13,5 +13,7 @@ system=[]
 capabilities=[]
 
 files=[]
+
+linker_flags=["-ObjC"]
 
 [plist]

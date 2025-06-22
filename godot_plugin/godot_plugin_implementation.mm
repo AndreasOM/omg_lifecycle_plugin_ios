@@ -8,24 +8,24 @@
 
 #import <Foundation/Foundation.h>
 
-#include "core/project_settings.h"
-#include "core/class_db.h"
+#include "core/object/class_db.h"
+#include "core/config/project_settings.h"
 
 #import "godot_plugin_implementation.h"
 
-void PluginExample::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("foo"), &PluginExample::foo);
+void OMGLifecyclePlugin_iOS::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("foo"), &OMGLifecyclePlugin_iOS::foo);
 }
 
-Error PluginExample::foo() {
-    NSLog(@"foo");
+Error OMGLifecyclePlugin_iOS::foo() {
+    NSLog(@"OMGLifecyclePlugin_iOS::foo");
     return OK;
 }
 
-PluginExample::PluginExample() {
+OMGLifecyclePlugin_iOS::OMGLifecyclePlugin_iOS() {
     NSLog(@"initialize object");
 }
 
-PluginExample::~PluginExample() {
+OMGLifecyclePlugin_iOS::~OMGLifecyclePlugin_iOS() {
     NSLog(@"deinitialize object");
 }
