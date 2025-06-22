@@ -22,12 +22,24 @@ class OMGLifecyclePlugin_iOS : public Object {
     
     static void _bind_methods();
     
+    static OMGLifecyclePlugin_iOS* instance;
+
+    NSString*  m_pLastURLString = nullptr;
 public:
     
     Error foo();
     
     OMGLifecyclePlugin_iOS();
     ~OMGLifecyclePlugin_iOS();
+
+    void openURL( NSURL* pURL );
+    void applicationDidBecomeActive();
+
+    static OMGLifecyclePlugin_iOS* get_singleton();
+
+    String get_last_url_string();
+
+    static NSURL* pEarlyOpenURL;
 };
 
 #endif /* godot_plugin_implementation_h */
