@@ -1,6 +1,8 @@
 #import "godot_plugin_application_delegate.h"
 
-#import "platform/ios/godot_app_delegate.h"
+//#import "platform/ios/godot_app_delegate.h"
+// Godot 4.4 -> 4.5
+#import "drivers/apple_embedded/godot_app_delegate.h"
 
 #import "godot_plugin_implementation.h"
 
@@ -8,7 +10,9 @@ struct PluginApplicationDelegateInitializer {
 	PluginApplicationDelegateInitializer() {
 		NSLog(@"OMGLifecyclePlugin_iOS - PluginApplicationDelegateInitializer - Constructor");
 
-		[GodotApplicationDelegate addService:[PluginApplicationDelegate shared]];
+//		[GodotApplicationDelegate addService:[PluginApplicationDelegate shared]];
+// Godot 4.4 -> 4.5
+		[GDTApplicationDelegate addService:[PluginApplicationDelegate shared]];
 	}
 };
 static PluginApplicationDelegateInitializer initializer;

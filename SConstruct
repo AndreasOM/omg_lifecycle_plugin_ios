@@ -25,7 +25,7 @@ opts.Add(BoolVariable('simulator', "Compilation platform", 'no'))
 opts.Add(BoolVariable('use_llvm', "Use the LLVM / Clang compiler", 'no'))
 opts.Add('target_name', 'Resulting file name.', '')
 opts.Add(PathVariable('target_path', 'The path where the lib is installed.', 'bin/'))
-opts.Add(EnumVariable('version', 'Godot version to target', '', ['', '3.2', '4.0', '4.4']))
+opts.Add(EnumVariable('version', 'Godot version to target', '', ['', '3.2', '4.0', '4.4', '4.5']))
 
 # Updates the environment with the option variables.
 opts.Update(env)
@@ -148,6 +148,32 @@ elif env['version'] == '4.0':
         if env['arch'] != 'armv7':
             env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])            
 elif env['version'] == '4.4':
+    env.Prepend(CFLAGS=['-std=gnu11'])
+    env.Prepend(CXXFLAGS=['-DVULKAN_ENABLED', '-std=gnu++17'])
+
+    if env['target'] == 'debug':
+        env.Prepend(CXXFLAGS=[
+            '-gdwarf-2', '-O0', 
+            '-DDEBUG_MEMORY_ALLOC', '-DDISABLE_FORCED_INLINE', 
+            '-D_DEBUG', '-DDEBUG=1', '-DDEBUG_ENABLED', 
+        ])
+    elif env['target'] == 'release_debug':
+        env.Prepend(CXXFLAGS=[
+            '-O2', '-ftree-vectorize',
+            '-DNDEBUG', '-DNS_BLOCK_ASSERTIONS=1', '-DDEBUG_ENABLED',
+        ])
+
+        if env['arch'] != 'armv7':
+            env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])
+    else:
+        env.Prepend(CXXFLAGS=[
+            '-O2', '-ftree-vectorize',
+            '-DNDEBUG', '-DNS_BLOCK_ASSERTIONS=1',
+        ])
+
+        if env['arch'] != 'armv7':
+            env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])            
+elif env['version'] == '4.5':
     env.Prepend(CFLAGS=['-std=gnu11'])
     env.Prepend(CXXFLAGS=['-DVULKAN_ENABLED', '-std=gnu++17'])
 

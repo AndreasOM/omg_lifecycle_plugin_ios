@@ -1,7 +1,7 @@
 
 build:
-	./scripts/generate_xcframework.sh plugin debug 4.0
-	./scripts/generate_xcframework.sh plugin release 4.0
+	./scripts/generate_xcframework.sh plugin debug 4.5
+	./scripts/generate_xcframework.sh plugin release 4.5
 
 copy:
 	cp -R bin/plugin.debug.xcframework ../fiiish-v3/godot/ios/plugins/omg_lifecycle_plugin_ios/

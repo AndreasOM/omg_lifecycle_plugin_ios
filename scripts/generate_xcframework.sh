@@ -21,8 +21,13 @@ lipo -create \
 ###    "./bin/lib$1.x86_64-simulator.$2.a" \
 
 # Creating a xcframework 
-echo "xcframework"
-rm -r "./bin/$1.$2.xcframework"
+echo "xcframework - $1 - $2"
+FRAMEWORK_FOLDER="./bin/$1.$2.xcframework"
+if [[ -d "${FRAMEWORK_FOLDER}" ]]
+then
+    echo "💣 Deleting old ${FRAMEWORK_FOLDER} 💣"
+    rm -r "${FRAMEWORK_FOLDER}"
+fi
 
 xcodebuild -create-xcframework \
     -library "./bin/lib$1.arm64-ios.$2.a" \
