@@ -1,0 +1,66 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag (e.g. v0.0.0)'
+        required: true
+        default: 'v0.0.0'
+
+permissions:
+  contents: write
+
+env:
+  GODOT_TAG: 4.5.2-stable
+  PLUGIN_VERSION_FLAG: "4.5"
+
+jobs:
+  build-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: ver
+        run: echo "version=${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install build tools
+        run: brew install scons coreutils
+
+      # The committed symlink godot -> ../godot resolves to this clone.
+      - name: Fetch Godot source
+        run: git clone --depth 1 --branch "$GODOT_TAG" https://github.com/godotengine/godot.git ../godot
+
+      # Full engine build is not needed, only the generated headers. Kill scons
+      # after the generation phase (same technique as godotengine/godot-ios-plugins),
+      # then verify the headers the plugin depends on actually exist.
+      - name: Generate engine headers
+        run: |
+          cd ../godot
+          gtimeout 180 scons platform=ios target=template_debug arch=arm64 || true
+          test -f core/version_generated.gen.h
+          test -f core/object/gdvirtual.gen.inc
+
+      - name: Build xcframeworks
+        run: |
+          mkdir -p bin
+          ./scripts/generate_xcframework.sh plugin debug   "$PLUGIN_VERSION_FLAG"
+          ./scripts/generate_xcframework.sh plugin release "$PLUGIN_VERSION_FLAG"
+
+      # Zip layout is drop-in for a Godot project: unzip into godot/ios/plugins/
+      - name: Package
+        run: |
+          mkdir -p dist/omg_lifecycle_plugin_ios
+          cp -R bin/plugin.debug.xcframework bin/plugin.release.xcframework omg_lifecycle_plugin_ios.gdip dist/omg_lifecycle_plugin_ios/
+          cd dist
+          zip -r "omg_lifecycle_plugin_ios-${{ steps.ver.outputs.version }}.zip" omg_lifecycle_plugin_ios
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          files: dist/omg_lifecycle_plugin_ios-*.zip
+          generate_release_notes: true
