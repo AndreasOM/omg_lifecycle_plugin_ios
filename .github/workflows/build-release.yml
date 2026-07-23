@@ -28,21 +28,23 @@ jobs:
         run: echo "version=${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Install build tools
-        run: brew install scons coreutils
+        run: brew install scons
 
       # The committed symlink godot -> ../godot resolves to this clone.
       - name: Fetch Godot source
         run: git clone --depth 1 --branch "$GODOT_TAG" https://github.com/godotengine/godot.git ../godot
 
-      # Full engine build is not needed, only the generated headers. Kill scons
-      # after the generation phase (same technique as godotengine/godot-ios-plugins),
-      # then verify the headers the plugin depends on actually exist.
+      # Full engine build is not needed, only the generated files the plugin's
+      # includes pull in (list derived from the compiler's .d dependency output;
+      # extend it if plugin includes grow). Naming them as scons targets builds
+      # exactly those nodes and exits.
       - name: Generate engine headers
         run: |
           cd ../godot
-          gtimeout 180 scons platform=ios target=template_debug arch=arm64 || true
-          test -f core/version_generated.gen.h
-          test -f core/object/gdvirtual.gen.inc
+          scons platform=ios target=template_debug arch=arm64 \
+            core/version_generated.gen.h \
+            core/object/gdvirtual.gen.inc \
+            core/disabled_classes.gen.h
 
       - name: Build xcframeworks
         run: |
