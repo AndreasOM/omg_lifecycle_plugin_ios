@@ -71,6 +71,7 @@ void OMGLifecyclePlugin_iOS::openURL( NSURL* pURL ) {
 }
 
 void OMGLifecyclePlugin_iOS::applicationDidBecomeActive() {
+    WARN_PRINT_ONCE("OMGLifecyclePlugin_iOS: signal 'application_did_become_active' is deprecated; use MainLoop::NOTIFICATION_APPLICATION_RESUMED (engine-native since Godot 4.7).");
     emit_signal( APPLICATION_DID_BECOME_ACTIVE_SIGNAL );
 }
 

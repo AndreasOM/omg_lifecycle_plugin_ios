@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 env:
-  GODOT_TAG: 4.5.2-stable
-  PLUGIN_VERSION_FLAG: "4.5"
+  GODOT_TAG: 4.7.1-stable
+  PLUGIN_VERSION_FLAG: "4.7"
 
 jobs:
   build-release:
@@ -43,7 +43,7 @@ jobs:
           cd ../godot
           scons platform=ios target=template_debug arch=arm64 \
             core/version_generated.gen.h \
-            core/object/gdvirtual.gen.inc \
+            core/extension/gdextension_interface.gen.h \
             core/disabled_classes.gen.h
 
       - name: Build xcframeworks
@@ -58,7 +58,7 @@ jobs:
           mkdir -p dist/omg_lifecycle_plugin_ios
           cp -R bin/plugin.debug.xcframework bin/plugin.release.xcframework omg_lifecycle_plugin_ios.gdip dist/omg_lifecycle_plugin_ios/
           cd dist
-          zip -r "omg_lifecycle_plugin_ios-${{ steps.ver.outputs.version }}.zip" omg_lifecycle_plugin_ios
+          zip -r "omg_lifecycle_plugin_ios-${{ steps.ver.outputs.version }}-godot-4.7.zip" omg_lifecycle_plugin_ios
 
       - name: Create release
         uses: softprops/action-gh-release@v2

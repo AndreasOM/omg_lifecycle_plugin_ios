@@ -25,7 +25,8 @@ opts.Add(BoolVariable('simulator', "Compilation platform", 'no'))
 opts.Add(BoolVariable('use_llvm', "Use the LLVM / Clang compiler", 'no'))
 opts.Add('target_name', 'Resulting file name.', '')
 opts.Add(PathVariable('target_path', 'The path where the lib is installed.', 'bin/'))
-opts.Add(EnumVariable('version', 'Godot version to target', '', ['', '3.2', '4.0', '4.4', '4.5']))
+opts.Add(EnumVariable('version', 'Godot version to target', '', ['', '3.2', '4.0', '4.4', '4.5', '4.7']))
+opts.Add(PathVariable('engine_path', 'Path to the Godot engine source tree.', 'godot'))
 
 # Updates the environment with the option variables.
 opts.Update(env)
@@ -47,6 +48,16 @@ if env['target_name'] == '':
     print("No valid target name.")
     quit();
 
+# The engine tree must match the requested version, otherwise the build
+# silently mixes headers from the wrong release.
+engine_version = {}
+with open(os.path.join(env['engine_path'], 'version.py')) as f:
+    exec(f.read(), engine_version)
+engine_major_minor = "{}.{}".format(engine_version['major'], engine_version['minor'])
+if engine_major_minor != env['version']:
+    print("Engine at '{}' is {}, but version={} was requested.".format(env['engine_path'], engine_major_minor, env['version']))
+    quit();
+
 # For the reference:
 # - CCFLAGS are compilation flags shared between C and C++
 # - CFLAGS are for C-specific compilation flags
@@ -58,14 +69,17 @@ if env['target_name'] == '':
 # Enable Obj-C modules
 env.Append(CCFLAGS=["-fmodules", "-fcxx-modules"])
 
+# Matches the engine's own minimum: 12.0 up to 4.5, 14.0 from 4.6 on.
+min_ios_version = '14.0' if env['version'] == '4.7' else '12.0'
+
 if env['simulator']:
     sdk_name = 'iphonesimulator'
-    env.Append(CCFLAGS=['-mios-simulator-version-min=12.0'])
-    env.Append(LINKFLAGS=["-mios-simulator-version-min=12.0"])
+    env.Append(CCFLAGS=['-mios-simulator-version-min=' + min_ios_version])
+    env.Append(LINKFLAGS=["-mios-simulator-version-min=" + min_ios_version])
 else:
     sdk_name = 'iphoneos'
-    env.Append(CCFLAGS=['-miphoneos-version-min=12.0'])
-    env.Append(LINKFLAGS=["-miphoneos-version-min=12.0"])
+    env.Append(CCFLAGS=['-miphoneos-version-min=' + min_ios_version])
+    env.Append(LINKFLAGS=["-miphoneos-version-min=" + min_ios_version])
 
 try:
     sdk_path = decode_utf8(subprocess.check_output(['xcrun', '--sdk', sdk_name, '--show-sdk-path']).strip())
@@ -121,59 +135,7 @@ if env['version'] == '3.2':
 
         if env['arch'] != 'armv7':
             env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])
-elif env['version'] == '4.0':
-    env.Prepend(CFLAGS=['-std=gnu11'])
-    env.Prepend(CXXFLAGS=['-DVULKAN_ENABLED', '-std=gnu++17'])
-
-    if env['target'] == 'debug':
-        env.Prepend(CXXFLAGS=[
-            '-gdwarf-2', '-O0', 
-            '-DDEBUG_MEMORY_ALLOC', '-DDISABLE_FORCED_INLINE', 
-            '-D_DEBUG', '-DDEBUG=1', '-DDEBUG_ENABLED', 
-        ])
-    elif env['target'] == 'release_debug':
-        env.Prepend(CXXFLAGS=[
-            '-O2', '-ftree-vectorize',
-            '-DNDEBUG', '-DNS_BLOCK_ASSERTIONS=1', '-DDEBUG_ENABLED',
-        ])
-
-        if env['arch'] != 'armv7':
-            env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])
-    else:
-        env.Prepend(CXXFLAGS=[
-            '-O2', '-ftree-vectorize',
-            '-DNDEBUG', '-DNS_BLOCK_ASSERTIONS=1',
-        ])
-
-        if env['arch'] != 'armv7':
-            env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])            
-elif env['version'] == '4.4':
-    env.Prepend(CFLAGS=['-std=gnu11'])
-    env.Prepend(CXXFLAGS=['-DVULKAN_ENABLED', '-std=gnu++17'])
-
-    if env['target'] == 'debug':
-        env.Prepend(CXXFLAGS=[
-            '-gdwarf-2', '-O0', 
-            '-DDEBUG_MEMORY_ALLOC', '-DDISABLE_FORCED_INLINE', 
-            '-D_DEBUG', '-DDEBUG=1', '-DDEBUG_ENABLED', 
-        ])
-    elif env['target'] == 'release_debug':
-        env.Prepend(CXXFLAGS=[
-            '-O2', '-ftree-vectorize',
-            '-DNDEBUG', '-DNS_BLOCK_ASSERTIONS=1', '-DDEBUG_ENABLED',
-        ])
-
-        if env['arch'] != 'armv7':
-            env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])
-    else:
-        env.Prepend(CXXFLAGS=[
-            '-O2', '-ftree-vectorize',
-            '-DNDEBUG', '-DNS_BLOCK_ASSERTIONS=1',
-        ])
-
-        if env['arch'] != 'armv7':
-            env.Prepend(CXXFLAGS=['-fomit-frame-pointer'])            
-elif env['version'] == '4.5':
+elif env['version'] in ('4.0', '4.4', '4.5', '4.7'):
     env.Prepend(CFLAGS=['-std=gnu11'])
     env.Prepend(CXXFLAGS=['-DVULKAN_ENABLED', '-std=gnu++17'])
 
@@ -205,19 +167,9 @@ else:
 
 # Adding header files
 env.Append(CPPPATH=[
-    '.', 
-    'godot', 
-##    'godot/main', 
-##    'godot/core', 
- ##   'godot/core/os', 
- ##   'godot/core/platform',
-#    'godot/platform/iphone',
-    'godot/platform/ios',
-##    'godot/modules',
-##    'godot/scene',
-##    'godot/servers',
-##    'godot/drivers',
-##    'godot/thirdparty',
+    '.',
+    env['engine_path'],
+    env['engine_path'] + '/platform/ios',
 ])
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.

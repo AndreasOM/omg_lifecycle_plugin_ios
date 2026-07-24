@@ -4,12 +4,12 @@ set -e
 # Compile static libraries
 
 # ARM64 Device
-scons target=$2 arch=arm64 target_name=$1 version=$3
+scons target=$2 arch=arm64 target_name=$1 version=$3 ${4:+engine_path=$4}
 # x86_64 Simulator
 ### Note: intel Macs are obsolete
 ### scons target=$2 arch=x86_64 simulator=yes target_name=$1 version=$3
 # ARM64 Simulator
-scons target=$2 arch=arm64 simulator=yes target_name=$1 version=$3
+scons target=$2 arch=arm64 simulator=yes target_name=$1 version=$3 ${4:+engine_path=$4}
 
 # Creating a fat libraries for device and simulator
 # lib<plugin>.<arch>-<simulator|ios>.<release|debug|release_debug>.a

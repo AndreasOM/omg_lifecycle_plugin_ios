@@ -1,19 +1,44 @@
-# Godot iOS Plugin template
+# OMG Lifecycle Plugin iOS
 
-This repo contains a *starter* Xcode and SCons configuration to build Godot plugin for iOS.
-Xcode project and Scons configuration allows to build static `.a` library, that could be used with `.gdip` file as Godot's plugin to include platform functionality into exported application.
+Godot iOS plugin (`.gdip` + static xcframework) that exposes application lifecycle events and deep-link URLs to GDScript.
 
-# Initial setup
+## API
 
-## Getting Godot engine headers
+Singleton `OMGLifecyclePlugin_iOS` (check with `Engine.has_singleton`):
 
-To build iOS plugin library it's required to have Godot's header files including generated ones. So running `scons platform=iphone target=<release|debug|release_debug>` in `godot` submodule folder is required.
+- signal `received_url(url: String)` — emitted when the app is opened via a custom URL scheme while running.
+- `get_last_url_string() -> String` — last received URL, including the cold-launch URL (available at startup).
+- signal `application_did_become_active` — **deprecated**: use `MainLoop.NOTIFICATION_APPLICATION_RESUMED`, which is engine-native and works again since Godot 4.7. Kept for compatibility; emits a one-time warning.
+- `foo()` — test method.
 
-# Working with Xcode
+## Godot versions
 
-Building project should be enough to build a `.a` library that could be used with `.gdip` file.
+- **4.7** — current target. Godot 4.7 exports use the UIScene lifecycle; the plugin implements both the legacy `UIApplicationDelegate` callbacks and the UIScene callbacks (`sceneDidBecomeActive:`, `scene:willConnectToSession:options:`, `scene:openURLContexts:`), so URLs work cold and warm. Requires Godot 4.7+ (4.6 never forwarded scene URL events to plugins).
+- **4.5** — legacy; still buildable (`just build-45`). Last released 4.5 artifact: v0.0.0.
 
-# Working with SCons
+## Building
 
-Running `scons platform=ios arch=<arch> target=<release|debug|release_debug> target_name=<library_name> version=<3.2|4.0>` would result in plugin library for specific platform.
-Compiling for multiple archs and using `lipo -create .. -output ..` might be required for release builds.
+Needs a Godot source tree of the matching version with a few generated headers:
+
+```
+git clone --depth 1 --branch 4.7.1-stable https://github.com/godotengine/godot.git ../godot-4.7
+cd ../godot-4.7
+scons platform=ios target=template_debug arch=arm64 \
+    core/version_generated.gen.h \
+    core/extension/gdextension_interface.gen.h \
+    core/disabled_classes.gen.h
+```
+
+Then in this repo:
+
+```
+mkdir -p bin
+just build        # Godot 4.7 against ../godot-4.7
+just build-45     # Godot 4.5 against ../godot-4.5
+```
+
+The engine tree can also be passed directly: `scons ... version=4.7 engine_path=../godot-4.7`. The build fails if the tree's version does not match the `version` flag.
+
+## Releases
+
+GitHub Actions builds on tag push (`v*`) or manual dispatch and attaches `omg_lifecycle_plugin_ios-<tag>-godot-4.7.zip` to a release. Unzip into your project's `godot/ios/plugins/` and enable the plugin in the iOS export preset.

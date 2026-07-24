@@ -19,6 +19,8 @@ static PluginApplicationDelegateInitializer initializer;
 
 @interface PluginApplicationDelegate ()
 
+- (void)handleURL:(NSURL *)url;
+
 @end
 
 @implementation PluginApplicationDelegate
@@ -44,6 +46,17 @@ static PluginApplicationDelegateInitializer initializer;
 	return sharedInstance;
 }
 
+// Before godot_plugin_init has created the singleton, URLs are stashed and
+// drained by the singleton's constructor.
+- (void)handleURL:(NSURL *)url {
+	OMGLifecyclePlugin_iOS* plugin = OMGLifecyclePlugin_iOS::get_singleton();
+	if( plugin ) {
+		plugin->openURL( url );
+	} else {
+		OMGLifecyclePlugin_iOS::pEarlyOpenURL = [url copy];
+	}
+}
+
 - (void)applicationDidBecomeActive:(UIApplication *)application {
 	NSLog( @"OMGLifecyclePlugin_iOS - applicationDidBecomeActive" );
 	OMGLifecyclePlugin_iOS* plugin = OMGLifecyclePlugin_iOS::get_singleton();
@@ -56,17 +69,12 @@ static PluginApplicationDelegateInitializer initializer;
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id> *)launchOptions {
 	NSLog( @"OMGLifecyclePlugin_iOS - didFinishLaunchingWithOptions" );
 
-	[launchOptions enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL* stop) {
-		NSLog(@"%@ => %@", key, value);
-		if( key == UIApplicationLaunchOptionsURLKey ) {
-			OMGLifecyclePlugin_iOS* plugin = OMGLifecyclePlugin_iOS::get_singleton();
-			if( plugin ) {
-				plugin->openURL( value );
-			} else {
-				OMGLifecyclePlugin_iOS::pEarlyOpenURL = [value copy];
-			}
-		}
-	}];
+	// Under the UIScene lifecycle (Godot 4.7+) the launch URL is not in
+	// launchOptions; it arrives via scene:willConnectToSession:options:.
+	NSURL* url = launchOptions[UIApplicationLaunchOptionsURLKey];
+	if( url ) {
+		[self handleURL:url];
+	}
 
 	return true;
 }
@@ -82,11 +90,36 @@ static PluginApplicationDelegateInitializer initializer;
 			options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
 	NSLog( @"OMGLifecyclePlugin_iOS - application openURL - 2" );
 
+	[self handleURL:url];
+	return true;
+}
+
+// UIScene lifecycle: Godot 4.7+ exports enable UIApplicationSceneManifest,
+// which makes UIKit skip the UIApplicationDelegate callbacks above. The engine
+// forwards these scene callbacks to registered services (never both sets).
+
+- (void)sceneDidBecomeActive:(UIScene *)scene {
+	NSLog( @"OMGLifecyclePlugin_iOS - sceneDidBecomeActive" );
 	OMGLifecyclePlugin_iOS* plugin = OMGLifecyclePlugin_iOS::get_singleton();
 	if( plugin ) {
-		plugin->openURL( url );
+		plugin->applicationDidBecomeActive();
 	}
-	return true;
+}
+
+// Cold launch: the launch URL arrives here, not in didFinishLaunchingWithOptions.
+- (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
+	NSLog( @"OMGLifecyclePlugin_iOS - scene willConnectToSession" );
+	for( UIOpenURLContext* context in connectionOptions.URLContexts ) {
+		[self handleURL:context.URL];
+	}
+}
+
+// Warm deep-link while running.
+- (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
+	NSLog( @"OMGLifecyclePlugin_iOS - scene openURLContexts" );
+	for( UIOpenURLContext* context in URLContexts ) {
+		[self handleURL:context.URL];
+	}
 }
 
 @end
